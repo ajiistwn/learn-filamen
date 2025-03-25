@@ -2,20 +2,26 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\FacturResource\Pages;
-use App\Filament\Resources\FacturResource\RelationManagers;
-use App\Models\Faktur;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use App\Models\Barang;
+use App\Models\Faktur;
+use App\Models\Customer;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\TextInput;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\DatePicker;
+use Filament\Resources\Resource;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
+use App\Filament\Resources\FacturResource\Pages;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Resources\FacturResource\RelationManagers;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 
 class FacturResource extends Resource
 {
@@ -27,16 +33,104 @@ class FacturResource extends Resource
     {
         return $form
             ->schema([
-                TextInput::make('kode_faktur'),
-                DatePicker::make('tanggal_faktur'),
-                TextInput::make('kode_customer'),
+                TextInput::make('kode_faktur')
+                    ->columnspan(2),
                 Select::make('customer_id')
-                    ->relationship(name: 'customer', titleAttribute: 'nama_customer'),
-                TextInput::make('ket_faktur'),
-                TextInput::make('total'),
-                TextInput::make('nominal_charge'),
-                TextInput::make('charge'),
-                TextInput::make('total_final'),
+                    ->reactive()
+                    ->relationship(name: 'customer', titleAttribute: 'nama_customer')
+                    ->columnspan(["default" => 2, "sm" => 1])
+                    ->afterStateUpdated(function ($state,  callable $set) {
+                        $customer = Customer::find($state);
+                        $set('kode_customer', $customer->kode_customer);
+                    }),
+                DatePicker::make('tanggal_faktur')
+                    ->columnspan(["default" => 2, "sm" => 1]),
+                TextInput::make('kode_customer')
+                    ->columnspan(2)
+                    ->readOnly(),
+                Repeater::make('details')
+                    ->relationship()
+                    ->schema([
+                        Select::make('barang_id')
+                            ->columnSpan(2)
+                            ->relationship(name: 'barang', titleAttribute: 'nama_barang')
+                            ->reactive()
+                            ->afterStateUpdated(function ($state,  callable $set) {
+                                $barang = Barang::find($state);
+                                $set('nama_barang', $barang->nama_barang);
+                                $set('harga', $barang->harga_barang);
+                            }),
+                        TextInput::make('nama_barang')
+                            ->columnSpan(2),
+                        // ->disabled(),
+                        TextInput::make('harga')
+                            ->columnSpan(["default" => 2, "sm" => 1, "md" => 1, "lg" => 1])
+                            ->numeric()
+                            ->prefix('Rp'),
+                        // ->disabled(),
+                        TextInput::make('qty')
+                            ->numeric()
+                            ->reactive()
+                            ->columnSpan(["default" => 2, "sm" => 1, "md" => 1, "lg" => 1])
+                            ->afterStateUpdated(function (Set $set, $state, Get $get) {
+                                $set('hasil_qty', $state * $get('harga'));
+                            }),
+                        TextInput::make('hasil_qty')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->columnSpan(2),
+                        // ->disabled(),
+                        TextInput::make('diskon')
+                            ->numeric()
+                            ->columnSpan(2)
+                            ->prefix('%')
+                            ->reactive()
+                            ->afterStateUpdated(function (Set $set, $state, Get $get) {
+                                $set('subtotal', $get('hasil_qty') - (($state / 100) * $get('hasil_qty')));
+                            }),
+                        TextInput::make('subtotal')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->columnSpan(2),
+                        // ->disabled(),
+
+                    ])
+                    ->columnspan(2)
+                    ->live(),
+                Textarea::make('ket_faktur')
+                    ->columnspan(2),
+                TextInput::make('total')
+                    ->prefix('Rp')
+
+                    ->columnspan(["default" => 2, "sm" => 1])
+                    ->placeholder(function (Set $set, Get $get) {
+                        $total = collect($get('details'))->pluck('subtotal')->sum();
+                        if ($total) {
+                            $set('total', $total);
+                        } else {
+                            $set('total', 0);
+                        }
+                    })
+                    ->live(),
+                TextInput::make('nominal_charge')
+                    ->columnspan(["default" => 2, "sm" => 1])
+                    ->reactive()
+                    ->prefix('%')
+                    ->afterStateUpdated(function (Set $set, $state, Get $get) {
+                        $set('charge', ($state / 100) * $get('total'));
+                    }),
+                TextInput::make('charge')
+                    ->numeric()
+                    ->columnspan(2)
+                    ->prefix('Rp'),
+                // ->disabled(),
+                TextInput::make('total_final')
+                    ->columnspan(2)
+                    ->prefix('Rp')
+                    ->placeholder(function (Set $set, Get $get) {
+                        $set('total_final', $get('total') + $get('charge'));
+                    }),
+                // ->disabled()
             ]);
     }
 
@@ -48,14 +142,14 @@ class FacturResource extends Resource
                 TextColumn::make('kode_faktur'),
                 TextColumn::make('tanggal_faktur'),
                 TextColumn::make('kode_customer'),
-                TextColumn::make('customer_id'),
+                TextColumn::make('customer.nama_customer'),
                 TextColumn::make('ket_faktur'),
                 TextColumn::make('total'),
                 TextColumn::make('nominal_charge'),
                 TextColumn::make('charge'),
                 TextColumn::make('total_final'),
                 TextColumn::make('created_at')
-                    
+
 
             ])
             ->filters([
