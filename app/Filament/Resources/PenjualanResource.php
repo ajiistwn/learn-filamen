@@ -46,19 +46,31 @@ class PenjualanResource extends Resource
                 Tables\Columns\TextColumn::make('jumlah')
                     ->label("Jumlah")
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->formatStateUsing(function ($state) {
+                        return 'Rp ' . number_format($state, 0, ',', '.');
+                    }),
                 Tables\Columns\TextColumn::make('customer.nama_customer')
                     ->label("Nama Customer")
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->label("Status")
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('keterangan')
                     ->label("Keterangan")
                     ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label("Status")
+                    ->sortable()
                     ->searchable()
+                    ->color(fn (string $state): string => match ($state) {
+                        '1' => 'success',
+                        '0' => 'danger',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        '1' => 'Lunas',
+                        '0' => 'Belum Lunas',
+                    }),
+
 
             ])
             ->filters([
@@ -68,9 +80,9 @@ class PenjualanResource extends Resource
                 // Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                // Tables\Actions\BulkActionGroup::make([
+                //     Tables\Actions\DeleteBulkAction::make(),
+                // ]),
             ]);
     }
 
@@ -86,7 +98,7 @@ class PenjualanResource extends Resource
         return [
             'index' => Pages\ListPenjualans::route('/'),
             'create' => Pages\CreatePenjualan::route('/create'),
-            'edit' => Pages\EditPenjualan::route('/{record}/edit'),
+            // 'edit' => Pages\EditPenjualan::route('/{record}/edit'),
         ];
     }
 }

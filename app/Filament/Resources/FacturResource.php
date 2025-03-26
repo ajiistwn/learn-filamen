@@ -144,14 +144,33 @@ class FacturResource extends Resource
                 TextColumn::make('kode_customer'),
                 TextColumn::make('customer.nama_customer'),
                 TextColumn::make('ket_faktur'),
-                TextColumn::make('total'),
-                TextColumn::make('nominal_charge'),
-                TextColumn::make('charge'),
-                TextColumn::make('total_final'),
+                TextColumn::make('total')
+                    ->formatStateUsing(function ($state) {
+                        return 'Rp ' . number_format($state, 0, ',', '.');
+                    }),
+                TextColumn::make('nominal_charge')
+                    ->formatStateUsing(function ($state) {
+                        return 'Rp ' . number_format($state, 0, ',', '.');
+                    }),
+                TextColumn::make('charge')
+                    ->formatStateUsing(function ($state) {
+                        return 'Rp ' . number_format($state, 0, ',', '.');
+                    }),
+                TextColumn::make('total_final')
+                    ->formatStateUsing(function ($state) {
+                        return 'Rp ' . number_format($state, 0, ',', '.');
+                    }),
                 TextColumn::make('created_at')
-
-
             ])
+            ->emptyStateHeading('Data masih Kosong')
+            ->emptyStateDescription('Silahkan buat data baru')
+            ->emptyStateIcon('heroicon-o-document-text')
+            ->emptyStateActions([
+                Tables\Actions\Action::make('Buat Data')
+                    ->button()
+                    ->url(static::getUrl('create')),
+            ])
+            
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
